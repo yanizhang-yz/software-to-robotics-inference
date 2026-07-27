@@ -23,6 +23,22 @@ identifies `gym_pusht/PushT-v0`, MPS, LeRobot 0.5.1, the
 limit. It also records that the source tree was dirty and that the Hub policy
 was not revision-pinned.
 
+## Observation, Action, and Episode Contracts
+
+The authoritative
+[evaluator implementation](https://github.com/yanizhang-yz/robotics-experiments/blob/master/pusht-diffusion/eval_pusht_policy.py)
+creates the environment with `obs_type="pixels_agent_pos"`, which provides a
+`pixels` image plus the simulated pusher's 2D `agent_pos`. For policy input, the
+evaluator converts the HWC `uint8` image to a CHW float tensor in `[0,1]`, maps
+`agent_pos` to `observation.state`, and adds a batch dimension to both tensors.
+
+After applying any loaded postprocessor, the policy output becomes a two-value
+`[x, y]` target position for the simulated pusher and is passed to `env.step`.
+Before each episode the evaluator calls `policy.reset()`, then resets the
+environment with seed `1000 + i`. It runs until the environment terminates or
+truncates under the configured 200-step limit, and maps each episode to one
+trial record.
+
 ## Recorded Evidence
 
 The evaluation ran three seeded episodes and recorded:
@@ -37,6 +53,14 @@ A separate
 [rollout video](https://github.com/yanizhang-yz/robotics-experiments/blob/master/pusht-diffusion/pusht_rollout.mp4)
 shows that a policy rollout was captured, but it is not a substitute for the
 three-episode metric.
+
+In the
+[PushT task](https://github.com/huggingface/gym-pusht/blob/main/README.md),
+success means pushing the T into the target zone. The three recorded trials
+instead reached maximum coverage of `0.02`, `0.00`, and `0.01` after 200 steps,
+so every trial was classified as `low_coverage`. This shows that the recorded
+episodes did not solve the task and barely covered the target; it does not
+identify the cause of the behavior or establish the policy's general quality.
 
 ## What This Verifies
 
