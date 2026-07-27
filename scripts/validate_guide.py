@@ -4,6 +4,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 APPROVED_IDS = {f"M{number}" for number in range(7)}
 APPROVED_STATUSES = {"planned", "active", "blocked", "verified"}
@@ -28,6 +29,56 @@ PUBLIC_EVIDENCE_URL_PATTERN = re.compile(
     r"^https://github\.com/yanizhang-yz/[^/?#]+/blob/"
     r"(?:main|[0-9a-fA-F]{40})/[^/?#]+(?:/[^/?#]+)*$"
 )
+MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+MARKDOWN_HEADING = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE)
+
+
+def heading_anchor(heading: str) -> str:
+    plain = re.sub(r"[`*_~]", "", heading).strip().lower()
+    plain = re.sub(r"[^\w\s-]", "", plain)
+    return re.sub(r"-+", "-", re.sub(r"\s+", "-", plain))
+
+
+def validate_internal_links(root: Path) -> list[str]:
+    errors: list[str] = []
+    resolved_root = root.resolve()
+
+    for source in root.rglob("*.md"):
+        text = source.read_text(encoding="utf-8")
+        for raw_target in MARKDOWN_LINK.findall(text):
+            target = raw_target.strip().split(" ", 1)[0]
+            if target.startswith(("http://", "https://", "mailto:")):
+                continue
+
+            path_text, separator, fragment = target.partition("#")
+            destination = source if not path_text else source.parent / unquote(path_text)
+            destination = destination.resolve()
+
+            if not destination.is_relative_to(resolved_root):
+                errors.append(
+                    f"{source.relative_to(root)} links outside repository: {target}"
+                )
+                continue
+            if not destination.is_file():
+                errors.append(
+                    f"{source.relative_to(root)} has missing internal link target: "
+                    f"{target}"
+                )
+                continue
+            if separator:
+                anchors = {
+                    heading_anchor(heading)
+                    for heading in MARKDOWN_HEADING.findall(
+                        destination.read_text(encoding="utf-8")
+                    )
+                }
+                if unquote(fragment).lower() not in anchors:
+                    errors.append(
+                        f"{source.relative_to(root)} has missing heading anchor: "
+                        f"{target}"
+                    )
+
+    return errors
 
 
 def validate(root: Path) -> list[str]:
@@ -110,6 +161,7 @@ def validate(root: Path) -> list[str]:
                 f"{relative_path} contains a personal absolute path"
             )
 
+    errors.extend(validate_internal_links(root))
     return errors
 
 

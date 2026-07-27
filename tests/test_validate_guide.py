@@ -58,6 +58,27 @@ class ValidateGuideTests(unittest.TestCase):
         self.write_minimal_guide(root)
         self.assertEqual(validate(root), [])
 
+    def test_rejects_missing_internal_file(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        (root / "README.md").write_text(
+            "# Test\n[missing](docs/missing.md)\n", encoding="utf-8"
+        )
+        self.assertTrue(
+            any("missing internal link target" in error for error in validate(root))
+        )
+
+    def test_accepts_existing_heading_anchor(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        target = root / "docs/target.md"
+        target.write_text("# Target\n\n## Expected Heading\n", encoding="utf-8")
+        (root / "README.md").write_text(
+            "# Test\n[target](docs/target.md#expected-heading)\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(validate(root), [])
+
     def test_rejects_unknown_status(self) -> None:
         root = self.make_root()
         self.write_minimal_guide(root)
