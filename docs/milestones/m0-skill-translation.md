@@ -1,6 +1,6 @@
 # M0 — Translate Your Existing Software Skills
 
-Status: planned
+Status: verified
 
 ## Why This Matters
 
@@ -40,4 +40,14 @@ Completion gate: A personal gap map and selected simulation, cloud, and hardware
 
 ## Evidence
 
-No evidence is recorded while this milestone is planned.
+The
+[merged gap map](https://github.com/yanizhang-yz/software-to-robotics-inference/blob/main/docs/build-log/2026-07-26-software-skill-gap-map.md)
+documents the starting strengths, missing model-execution and robotics skills,
+selected hardware-free learning order, and observable completion gates. The
+authoritative
+[Robotics Inference Foundations roadmap](https://github.com/yanizhang-yz/robotics-inference-foundations/blob/main/ROADMAP.md)
+keeps the underlying theory and implementation gates visible.
+
+This verifies a public gap map and selected path. It does not verify mastery of
+the mapped skills, GPU serving, trained robot policies, autonomous arm success,
+or upstream contributions.
