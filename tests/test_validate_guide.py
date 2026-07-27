@@ -10,6 +10,7 @@ class ValidateGuideTests(unittest.TestCase):
     def test_ci_runs_tests_and_validator(self) -> None:
         root = Path(__file__).resolve().parents[1]
         workflow = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        self.assertIn("permissions:\n  contents: read", workflow)
         self.assertIn("python3 -m unittest discover -s tests -v", workflow)
         self.assertIn("python3 scripts/validate_guide.py", workflow)
 
@@ -54,12 +55,27 @@ class ValidateGuideTests(unittest.TestCase):
         for number in range(7):
             milestone_id = f"M{number}"
             guide_path = f"docs/milestones/m{number}.md"
-            (root / guide_path).write_text(f"# {milestone_id}\n", encoding="utf-8")
+            status = "planned"
+            (root / guide_path).write_text(
+                f"# {milestone_id} — Milestone {number}\n\n"
+                f"Status: {status}\n\n"
+                "## Why This Matters\n\nRequired content.\n\n"
+                "## Prerequisites\n\nRequired content.\n\n"
+                "## Learn\n\nRequired content.\n\n"
+                "## Build\n\nRequired content.\n\n"
+                "## Measure\n\nRequired content.\n\n"
+                "## Present\n\nRequired content.\n\n"
+                "## Hardware-Free Path\n\nRequired content.\n\n"
+                "## Advanced Path\n\nRequired content.\n\n"
+                "## Completion Gate\n\nRequired content.\n\n"
+                "## Evidence\n\nRequired content.\n",
+                encoding="utf-8",
+            )
             records.append(
                 {
                     "id": milestone_id,
                     "title": f"Milestone {number}",
-                    "status": "planned",
+                    "status": status,
                     "guide_path": guide_path,
                     "evidence_url": None,
                 }
@@ -131,6 +147,23 @@ class ValidateGuideTests(unittest.TestCase):
         )
         self.assertEqual(validate(root), [])
 
+    def test_heading_anchor_suffixes_avoid_collisions_with_emitted_anchors(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        target = root / "docs/target.md"
+        target.write_text(
+            "# Target\n\n## Overview\n\n## Overview-1\n\n## Overview\n",
+            encoding="utf-8",
+        )
+        (root / "README.md").write_text(
+            "# Test\n"
+            "[first](docs/target.md#overview)\n"
+            "[second](docs/target.md#overview-1)\n"
+            "[third](docs/target.md#overview-2)\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(validate(root), [])
+
     def test_decodes_percent_encoded_internal_link_paths(self) -> None:
         root = self.make_root()
         self.write_minimal_guide(root)
@@ -176,6 +209,91 @@ class ValidateGuideTests(unittest.TestCase):
         path.write_text(json.dumps(records), encoding="utf-8")
         self.assertIn("M0 uses unsupported status: done", validate(root))
 
+    def test_rejects_milestone_records_without_exact_schema_and_types(self) -> None:
+        invalid_changes = (
+            ("missing field", lambda record: record.pop("title")),
+            ("extra field", lambda record: record.__setitem__("notes", "no")),
+            ("id type", lambda record: record.__setitem__("id", 0)),
+            ("title type", lambda record: record.__setitem__("title", None)),
+            ("status type", lambda record: record.__setitem__("status", ["planned"])),
+            ("guide path type", lambda record: record.__setitem__("guide_path", 1)),
+            ("evidence type", lambda record: record.__setitem__("evidence_url", 1)),
+        )
+
+        for label, mutate in invalid_changes:
+            with self.subTest(label=label):
+                root = self.make_root()
+                self.write_minimal_guide(root)
+                path = root / "data/milestones.json"
+                records = json.loads(path.read_text(encoding="utf-8"))
+                mutate(records[0])
+                path.write_text(json.dumps(records), encoding="utf-8")
+                self.assertTrue(
+                    any(
+                        "milestone record at index 0" in error
+                        for error in validate(root)
+                    )
+                )
+
+    def test_rejects_milestone_page_missing_required_section(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        page = root / "docs/milestones/m0.md"
+        page.write_text(
+            page.read_text(encoding="utf-8").replace(
+                "## Hardware-Free Path\n\nRequired content.\n\n", ""
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertIn(
+            "M0 guide page is missing required section: Hardware-Free Path",
+            validate(root),
+        )
+
+    def test_rejects_blank_completion_gate(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        page = root / "docs/milestones/m0.md"
+        page.write_text(
+            page.read_text(encoding="utf-8").replace(
+                "## Completion Gate\n\nRequired content.\n\n## Evidence",
+                "## Completion Gate\n\n## Evidence",
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertIn("M0 guide page has a blank Completion Gate", validate(root))
+
+    def test_rejects_milestone_page_id_mismatch(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        page = root / "docs/milestones/m0.md"
+        page.write_text(
+            page.read_text(encoding="utf-8").replace(
+                "# M0 — Milestone 0", "# M1 — Milestone 0"
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertIn("M0 guide page H1 does not identify M0", validate(root))
+
+    def test_rejects_milestone_page_status_mismatch(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        page = root / "docs/milestones/m0.md"
+        page.write_text(
+            page.read_text(encoding="utf-8").replace(
+                "Status: planned", "Status: active"
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertIn(
+            "M0 guide page status active does not match milestone data status planned",
+            validate(root),
+        )
+
     def test_verified_requires_public_evidence(self) -> None:
         root = self.make_root()
         self.write_minimal_guide(root)
@@ -217,10 +335,24 @@ class ValidateGuideTests(unittest.TestCase):
             "https://github.com/yanizhang-yz/project/tree/main/evidence",
             "https://github.com/yanizhang-yz/project/blob/main/",
             "https://github.com/yanizhang-yz/project/blob/main//",
+            "https://github.com/yanizhang-yz/project/blob/main/evidence//result.md",
+            "https://github.com/yanizhang-yz/project/blob/main/../result.md",
+            "https://github.com/yanizhang-yz/project/blob/main/%2e%2e/result.md",
+            "https://github.com/yanizhang-yz/project/blob/main/%2Fetc/passwd",
+            "https://github.com/yanizhang-yz/project/blob/main/%5Cwindows",
+            "https://github.com/%79anizhang-yz/project/blob/main/evidence.md",
+            "https://github.com/yanizhang-yz/project/%62lob/main/evidence.md",
+            "https://github.com/yanizhang-yz/project/blob/%6dain/evidence.md",
             "https://github.com/yanizhang-yz/project/blob/main?file=evidence.md",
             "https://github.com/yanizhang-yz/project/blob/main#evidence.md",
             "https://github.com/other-owner/project/blob/main/evidence.md",
             "https://example.com/yanizhang-yz/project/blob/main/evidence.md",
+            "http://github.com/yanizhang-yz/project/blob/main/evidence.md",
+            "https://user@github.com/yanizhang-yz/project/blob/main/evidence.md",
+            "https://github.com:443/yanizhang-yz/project/blob/main/evidence.md",
+            "https://github.com/yanizhang-yz/project/blob/dev/evidence.md",
+            "https://github.com/yanizhang-yz/project/blob/main/evidence.md?raw=1",
+            "https://github.com/yanizhang-yz/project/blob/main/evidence.md#result",
         )
         for evidence_url in invalid_urls:
             with self.subTest(evidence_url=evidence_url):
