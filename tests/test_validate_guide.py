@@ -66,11 +66,92 @@ class ValidateGuideTests(unittest.TestCase):
         path.write_text(json.dumps(records), encoding="utf-8")
         self.assertIn("M0 is verified without a public evidence URL", validate(root))
 
+    def test_verified_accepts_public_github_blob_evidence(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        path = root / "data/milestones.json"
+        records = json.loads(path.read_text(encoding="utf-8"))
+        records[0]["status"] = "verified"
+
+        for evidence_url in (
+            "https://github.com/yanizhang-yz/project/blob/main/evidence/result.md",
+            "https://github.com/yanizhang-yz/project/blob/"
+            "0123456789abcdef0123456789abcdef01234567/evidence/result.md",
+        ):
+            with self.subTest(evidence_url=evidence_url):
+                records[0]["evidence_url"] = evidence_url
+                path.write_text(json.dumps(records), encoding="utf-8")
+                self.assertNotIn(
+                    "M0 is verified without a public evidence URL", validate(root)
+                )
+
+    def test_verified_rejects_non_artifact_evidence_urls(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        path = root / "data/milestones.json"
+        records = json.loads(path.read_text(encoding="utf-8"))
+        records[0]["status"] = "verified"
+
+        invalid_urls = (
+            "https://github.com/yanizhang-yz",
+            "https://github.com/yanizhang-yz/project",
+            "https://github.com/yanizhang-yz/project/tree/main/evidence",
+            "https://github.com/yanizhang-yz/project/blob/main/",
+            "https://github.com/yanizhang-yz/project/blob/main//",
+            "https://github.com/yanizhang-yz/project/blob/main?file=evidence.md",
+            "https://github.com/yanizhang-yz/project/blob/main#evidence.md",
+            "https://github.com/other-owner/project/blob/main/evidence.md",
+            "https://example.com/yanizhang-yz/project/blob/main/evidence.md",
+        )
+        for evidence_url in invalid_urls:
+            with self.subTest(evidence_url=evidence_url):
+                records[0]["evidence_url"] = evidence_url
+                path.write_text(json.dumps(records), encoding="utf-8")
+                self.assertIn(
+                    "M0 is verified without a public evidence URL", validate(root)
+                )
+
+    def test_rejects_non_object_milestone_records(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        path = root / "data/milestones.json"
+        records = json.loads(path.read_text(encoding="utf-8"))
+        records[0] = "M0"
+        path.write_text(json.dumps(records), encoding="utf-8")
+        self.assertIn(
+            "milestone record at index 0 must be an object", validate(root)
+        )
+
+    def test_rejects_guide_paths_outside_the_repository(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        path = root / "data/milestones.json"
+        records = json.loads(path.read_text(encoding="utf-8"))
+
+        for guide_path in ("../outside.md", "/etc/passwd"):
+            with self.subTest(guide_path=guide_path):
+                records[0]["guide_path"] = guide_path
+                path.write_text(json.dumps(records), encoding="utf-8")
+                self.assertIn(
+                    f"M0 guide path is outside repository: {guide_path}",
+                    validate(root),
+                )
+
     def test_rejects_personal_absolute_paths(self) -> None:
         root = self.make_root()
         self.write_minimal_guide(root)
         (root / "README.md").write_text(
             "# Test\n/Users/example/private/file\n", encoding="utf-8"
+        )
+        self.assertTrue(
+            any("personal absolute path" in error for error in validate(root))
+        )
+
+    def test_rejects_windows_personal_absolute_paths(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        (root / "README.md").write_text(
+            r"# Test\nC:\Users\alice\private\file\n", encoding="utf-8"
         )
         self.assertTrue(
             any("personal absolute path" in error for error in validate(root))

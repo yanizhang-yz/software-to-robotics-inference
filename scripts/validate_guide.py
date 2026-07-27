@@ -16,12 +16,17 @@ REQUIRED_PATHS = {
 }
 PERSONAL_PATH_PATTERNS = (
     re.compile(r"/Users/[^/\s]+/"),
-    re.compile(r"[A-Za-z]:\\\\Users\\\\[^\\\\\s]+\\\\"),
+    re.compile(r"[A-Za-z]:\\Users\\[^\\\s]+\\"),
+)
+PUBLIC_EVIDENCE_URL_PATTERN = re.compile(
+    r"^https://github\.com/yanizhang-yz/[^/?#]+/blob/"
+    r"(?:main|[0-9a-fA-F]{40})/[^/?#]+(?:/[^/?#]+)*$"
 )
 
 
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
+    resolved_root = root.resolve()
 
     for relative in sorted(REQUIRED_PATHS):
         if not (root / relative).is_file():
@@ -41,7 +46,11 @@ def validate(root: Path) -> list[str]:
                 errors.append("data/milestones.json must contain a list")
 
     seen_ids: set[str] = set()
-    for record in records:
+    for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            errors.append(f"milestone record at index {index} must be an object")
+            continue
+
         milestone_id = str(record.get("id", ""))
         status = str(record.get("status", ""))
         guide_path = str(record.get("guide_path", ""))
@@ -53,11 +62,21 @@ def validate(root: Path) -> list[str]:
 
         if status not in APPROVED_STATUSES:
             errors.append(f"{milestone_id} uses unsupported status: {status}")
-        if not guide_path or not (root / guide_path).is_file():
-            errors.append(f"{milestone_id} guide path does not exist: {guide_path}")
+        guide_destination = (root / guide_path).resolve()
+        try:
+            guide_destination.relative_to(resolved_root)
+        except ValueError:
+            errors.append(
+                f"{milestone_id} guide path is outside repository: {guide_path}"
+            )
+        else:
+            if not guide_path or not guide_destination.is_file():
+                errors.append(
+                    f"{milestone_id} guide path does not exist: {guide_path}"
+                )
         if status == "verified" and not (
             isinstance(evidence_url, str)
-            and evidence_url.startswith("https://github.com/yanizhang-yz/")
+            and PUBLIC_EVIDENCE_URL_PATTERN.fullmatch(evidence_url)
         ):
             errors.append(
                 f"{milestone_id} is verified without a public evidence URL"
