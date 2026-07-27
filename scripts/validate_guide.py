@@ -39,15 +39,26 @@ def heading_anchor(heading: str) -> str:
     return re.sub(r"-+", "-", re.sub(r"\s+", "-", plain))
 
 
+def heading_anchors(text: str) -> set[str]:
+    anchors: set[str] = set()
+    counts: dict[str, int] = {}
+    for heading in MARKDOWN_HEADING.findall(text):
+        anchor = heading_anchor(heading)
+        count = counts.get(anchor, 0)
+        counts[anchor] = count + 1
+        anchors.add(anchor if count == 0 else f"{anchor}-{count}")
+    return anchors
+
+
 def validate_internal_links(root: Path) -> list[str]:
     errors: list[str] = []
     resolved_root = root.resolve()
 
-    for source in root.rglob("*.md"):
+    for source in sorted(root.rglob("*.md")):
         text = source.read_text(encoding="utf-8")
         for raw_target in MARKDOWN_LINK.findall(text):
             target = raw_target.strip().split(" ", 1)[0]
-            if target.startswith(("http://", "https://", "mailto:")):
+            if target.lower().startswith(("http://", "https://", "mailto:", "//")):
                 continue
 
             path_text, separator, fragment = target.partition("#")
@@ -66,12 +77,7 @@ def validate_internal_links(root: Path) -> list[str]:
                 )
                 continue
             if separator:
-                anchors = {
-                    heading_anchor(heading)
-                    for heading in MARKDOWN_HEADING.findall(
-                        destination.read_text(encoding="utf-8")
-                    )
-                }
+                anchors = heading_anchors(destination.read_text(encoding="utf-8"))
                 if unquote(fragment).lower() not in anchors:
                     errors.append(
                         f"{source.relative_to(root)} has missing heading anchor: "

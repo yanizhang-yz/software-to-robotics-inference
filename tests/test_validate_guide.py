@@ -79,6 +79,79 @@ class ValidateGuideTests(unittest.TestCase):
         )
         self.assertEqual(validate(root), [])
 
+    def test_ignores_case_insensitive_external_link_schemes(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        (root / "README.md").write_text(
+            "# Test\n"
+            "[http](HTTP://example.com/path)\n"
+            "[https](HTTPS://example.com/path)\n"
+            "[email](MAILTO:hello@example.com)\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(validate(root), [])
+
+    def test_ignores_protocol_relative_external_links(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        (root / "README.md").write_text(
+            "# Test\n[external](//cdn.example.com/guide.md)\n", encoding="utf-8"
+        )
+        self.assertEqual(validate(root), [])
+
+    def test_accepts_duplicate_heading_anchor_suffixes(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        target = root / "docs/target.md"
+        target.write_text(
+            "# Target\n\n## Overview\n\n## Overview\n\n## Overview\n",
+            encoding="utf-8",
+        )
+        (root / "README.md").write_text(
+            "# Test\n"
+            "[first](docs/target.md#overview)\n"
+            "[second](docs/target.md#overview-1)\n"
+            "[third](docs/target.md#overview-2)\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(validate(root), [])
+
+    def test_decodes_percent_encoded_internal_link_paths(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        target = root / "docs/space name.md"
+        target.write_text("# Target\n", encoding="utf-8")
+        (root / "README.md").write_text(
+            "# Test\n[target](docs/space%20name.md)\n", encoding="utf-8"
+        )
+        self.assertEqual(validate(root), [])
+
+    def test_rejects_internal_links_outside_repository(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        (root / "README.md").write_text(
+            "# Test\n[outside](../outside.md)\n", encoding="utf-8"
+        )
+        self.assertIn(
+            "README.md links outside repository: ../outside.md", validate(root)
+        )
+
+    def test_reports_internal_link_errors_in_source_path_order(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        for relative in ("docs/z-source.md", "docs/a-source.md"):
+            (root / relative).write_text(
+                "# Test\n[missing](missing.md)\n", encoding="utf-8"
+            )
+
+        self.assertEqual(
+            validate(root),
+            [
+                "docs/a-source.md has missing internal link target: missing.md",
+                "docs/z-source.md has missing internal link target: missing.md",
+            ],
+        )
+
     def test_rejects_unknown_status(self) -> None:
         root = self.make_root()
         self.write_minimal_guide(root)
