@@ -40,4 +40,14 @@ Completion gate: A safely recorded, trained, deployed, and evaluated SO-ARM101 t
 
 ## Evidence
 
-Implementation and measurement are active; no verified public evidence is recorded yet.
+The
+[current SO-ARM101 build log](https://github.com/yanizhang-yz/software-to-robotics-inference/blob/main/docs/build-log/2026-07-26-bringing-up-the-so-arm101.md)
+links the authoritative
+[verified hardware bring-up record](https://github.com/yanizhang-yz/so-arm101-policy-platform/blob/main/docs/phases/01-hardware-calibration-teleoperation.md),
+[active dataset protocol](https://github.com/yanizhang-yz/so-arm101-policy-platform/blob/main/docs/phases/02-record-and-inspect-dataset.md),
+and
+[capstone gate map](https://github.com/yanizhang-yz/so-arm101-policy-platform/blob/main/docs/guides/transition-capstone.md).
+
+This is active work only. Dataset recording, policy training, autonomous
+evaluation, and inference serving are not verified, so this milestone has no
+verified evidence URL yet.

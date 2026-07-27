@@ -1,6 +1,6 @@
 # M2 — Learn Robot Data and Policies with LeRobot
 
-Status: planned
+Status: verified
 
 ## Why This Matters
 
@@ -40,4 +40,17 @@ Completion gate: An inspected dataset or simulation evaluation explaining observ
 
 ## Evidence
 
-No evidence is recorded while this milestone is planned.
+The
+[merged PushT evaluation build log](https://github.com/yanizhang-yz/software-to-robotics-inference/blob/main/docs/build-log/2026-07-26-evaluating-a-robot-policy-without-hardware.md)
+records the result and its claim boundary. The authoritative experiment evidence
+includes the
+[PushT README](https://github.com/yanizhang-yz/robotics-experiments/blob/master/pusht-diffusion/README.md),
+[saved manifest](https://github.com/yanizhang-yz/robotics-experiments/blob/master/pusht-diffusion/results/run-2026-06-15T22-05-45%2B00-00/manifest.json),
+[saved metrics](https://github.com/yanizhang-yz/robotics-experiments/blob/master/pusht-diffusion/results/run-2026-06-15T22-05-45%2B00-00/metrics.json),
+and
+[rollout video](https://github.com/yanizhang-yz/robotics-experiments/blob/master/pusht-diffusion/pusht_rollout.mp4).
+
+This verifies evaluation execution and artifact writing: three seeded episodes
+ran, success was `0/3`, the 95% Wilson interval was `0.0–0.562`, and all three
+failures were classified as `low_coverage`. It does not verify policy quality
+or current LeRobot compatibility.
