@@ -59,4 +59,4 @@ or evidence while preserving the milestone completion gates.
 
 ## License
 
-This project is available under the [MIT License](LICENSE).
+This project is available under the [Apache License 2.0](LICENSE).

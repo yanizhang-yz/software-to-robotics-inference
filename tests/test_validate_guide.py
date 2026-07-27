@@ -17,6 +17,15 @@ class ValidateGuideTests(unittest.TestCase):
         repository_root = Path(__file__).resolve().parents[1]
         self.assertEqual(validate(repository_root), [])
 
+    def test_readme_identifies_repository_license(self) -> None:
+        repository_root = Path(__file__).resolve().parents[1]
+        readme = (repository_root / "README.md").read_text(encoding="utf-8")
+        license_text = (repository_root / "LICENSE").read_text(encoding="utf-8")
+
+        self.assertRegex(license_text, r"\A\s*Apache License\s+Version 2\.0")
+        self.assertIn("[Apache License 2.0](LICENSE)", readme)
+        self.assertNotIn("MIT License", readme)
+
     def make_root(self) -> Path:
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
