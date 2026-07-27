@@ -83,6 +83,18 @@ class ValidateGuideTests(unittest.TestCase):
         data = root / "data/milestones.json"
         data.parent.mkdir(parents=True, exist_ok=True)
         data.write_text(json.dumps(records), encoding="utf-8")
+        overview = root / "docs/milestones/README.md"
+        overview.write_text(
+            "# Milestone Overview\n\n"
+            "| ID | Milestone | Status | Guide |\n"
+            "|---|---|---|---|\n"
+            + "".join(
+                f"| {record['id']} | {record['title']} | {record['status']} | "
+                f"[{record['id']}]({Path(str(record['guide_path'])).name}) |\n"
+                for record in records
+            ),
+            encoding="utf-8",
+        )
 
     def test_minimal_guide_is_valid(self) -> None:
         root = self.make_root()
@@ -291,6 +303,59 @@ class ValidateGuideTests(unittest.TestCase):
 
         self.assertIn(
             "M0 guide page status active does not match milestone data status planned",
+            validate(root),
+        )
+
+    def test_rejects_milestone_overview_status_mismatch(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        overview = root / "docs/milestones/README.md"
+        overview.write_text(
+            overview.read_text(encoding="utf-8").replace(
+                "| M0 | Milestone 0 | planned |",
+                "| M0 | Milestone 0 | active |",
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertIn(
+            "M0 milestone overview status active "
+            "does not match milestone data status planned",
+            validate(root),
+        )
+
+    def test_rejects_missing_milestone_overview_status_row(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        overview = root / "docs/milestones/README.md"
+        overview.write_text(
+            overview.read_text(encoding="utf-8").replace(
+                "| M0 | Milestone 0 | planned | [M0](m0.md) |\n",
+                "",
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertIn(
+            "M0 milestone overview status row is missing",
+            validate(root),
+        )
+
+    def test_rejects_duplicate_milestone_overview_status_rows(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        overview = root / "docs/milestones/README.md"
+        m0_row = "| M0 | Milestone 0 | planned | [M0](m0.md) |\n"
+        overview.write_text(
+            overview.read_text(encoding="utf-8").replace(
+                m0_row,
+                m0_row + m0_row,
+            ),
+            encoding="utf-8",
+        )
+
+        self.assertIn(
+            "M0 milestone overview has 2 status rows; expected exactly one",
             validate(root),
         )
 
