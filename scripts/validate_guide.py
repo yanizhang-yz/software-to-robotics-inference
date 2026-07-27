@@ -169,6 +169,46 @@ def validate_milestone_page(
     return errors
 
 
+def validate_milestone_overview(
+    text: str, canonical_statuses: dict[str, str]
+) -> list[str]:
+    status_rows: dict[str, list[str]] = {
+        milestone_id: [] for milestone_id in APPROVED_IDS
+    }
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line.startswith("|") or not line.endswith("|"):
+            continue
+        cells = [cell.strip() for cell in line[1:-1].split("|")]
+        if len(cells) != 4 or cells[0] not in APPROVED_IDS:
+            continue
+        status_rows[cells[0]].append(cells[2])
+
+    errors: list[str] = []
+    for milestone_id in sorted(APPROVED_IDS):
+        statuses = status_rows[milestone_id]
+        if not statuses:
+            errors.append(
+                f"{milestone_id} milestone overview status row is missing"
+            )
+            continue
+        if len(statuses) != 1:
+            errors.append(
+                f"{milestone_id} milestone overview has {len(statuses)} "
+                "status rows; expected exactly one"
+            )
+            continue
+
+        canonical_status = canonical_statuses.get(milestone_id)
+        if canonical_status is not None and statuses[0] != canonical_status:
+            errors.append(
+                f"{milestone_id} milestone overview status {statuses[0]} "
+                f"does not match milestone data status {canonical_status}"
+            )
+
+    return errors
+
+
 def validate_internal_links(root: Path) -> list[str]:
     errors: list[str] = []
     resolved_root = root.resolve()
@@ -228,6 +268,7 @@ def validate(root: Path) -> list[str]:
                 errors.append("data/milestones.json must contain a list")
 
     seen_ids: set[str] = set()
+    canonical_statuses: dict[str, str] = {}
     for index, record in enumerate(records):
         if not isinstance(record, dict):
             errors.append(f"milestone record at index {index} must be an object")
@@ -270,6 +311,11 @@ def validate(root: Path) -> list[str]:
 
         if status not in APPROVED_STATUSES:
             errors.append(f"{milestone_id} uses unsupported status: {status}")
+        elif (
+            milestone_id in APPROVED_IDS
+            and milestone_id not in canonical_statuses
+        ):
+            canonical_statuses[milestone_id] = status
         guide_destination = (root / guide_path).resolve()
         try:
             guide_destination.relative_to(resolved_root)
@@ -300,6 +346,15 @@ def validate(root: Path) -> list[str]:
         errors.append(
             "milestone ids must be exactly M0 through M6; "
             f"found {sorted(seen_ids)}"
+        )
+
+    overview_path = root / "docs/milestones/README.md"
+    if overview_path.is_file():
+        errors.extend(
+            validate_milestone_overview(
+                overview_path.read_text(encoding="utf-8"),
+                canonical_statuses,
+            )
         )
 
     for path in root.rglob("*"):
