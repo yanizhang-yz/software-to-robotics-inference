@@ -17,9 +17,11 @@ completed milestone.
 ## Choose Your Path
 
 Simulation and cloud work are the core path and are sufficient for every
-milestone. SO-ARM101 is the advanced capstone for people who can safely access
-hardware. Follow LeRobot before SGLang: robot data and policies in M2 establish
-the context that later makes serving choices in M5 meaningful.
+required milestone. M3 is an optional real-hardware capstone, not a requirement
+for completing the core path. SO-ARM101 is the advanced capstone for people who
+can safely access hardware. Follow LeRobot before SGLang: robot data and
+policies in M2 establish the context that later makes serving choices in M5
+meaningful.
 
 - [Budget and Hardware Paths](docs/budget-paths.md)
 

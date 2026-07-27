@@ -4,10 +4,29 @@ import json
 import re
 import sys
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 
 APPROVED_IDS = {f"M{number}" for number in range(7)}
 APPROVED_STATUSES = {"planned", "active", "blocked", "verified"}
+MILESTONE_FIELDS = {
+    "evidence_url",
+    "guide_path",
+    "id",
+    "status",
+    "title",
+}
+REQUIRED_MILESTONE_SECTIONS = (
+    "Why This Matters",
+    "Prerequisites",
+    "Learn",
+    "Build",
+    "Measure",
+    "Present",
+    "Hardware-Free Path",
+    "Advanced Path",
+    "Completion Gate",
+    "Evidence",
+)
 REQUIRED_PATHS = {
     "CONTRIBUTING.md",
     "README.md",
@@ -25,12 +44,14 @@ PERSONAL_PATH_PATTERNS = (
     re.compile(r"/Users/[^/\s]+/"),
     re.compile(r"[A-Za-z]:\\Users\\[^\\\s]+\\"),
 )
-PUBLIC_EVIDENCE_URL_PATTERN = re.compile(
-    r"^https://github\.com/yanizhang-yz/[^/?#]+/blob/"
-    r"(?:main|[0-9a-fA-F]{40})/[^/?#]+(?:/[^/?#]+)*$"
-)
 MARKDOWN_LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 MARKDOWN_HEADING = re.compile(r"^#{1,6}\s+(.+?)\s*$", re.MULTILINE)
+MARKDOWN_H1 = re.compile(r"^#(?!#)\s+(.+?)\s*$", re.MULTILINE)
+MARKDOWN_H2 = re.compile(r"^##(?!#)\s+(.+?)\s*$", re.MULTILINE)
+PAGE_STATUS = re.compile(
+    r"^Status: (planned|active|blocked|verified)\s*$", re.MULTILINE
+)
+COMMIT_REF = re.compile(r"^[0-9a-fA-F]{40}$")
 
 
 def heading_anchor(heading: str) -> str:
@@ -41,13 +62,111 @@ def heading_anchor(heading: str) -> str:
 
 def heading_anchors(text: str) -> set[str]:
     anchors: set[str] = set()
-    counts: dict[str, int] = {}
     for heading in MARKDOWN_HEADING.findall(text):
-        anchor = heading_anchor(heading)
-        count = counts.get(anchor, 0)
-        counts[anchor] = count + 1
-        anchors.add(anchor if count == 0 else f"{anchor}-{count}")
+        base = heading_anchor(heading)
+        anchor = base
+        suffix = 1
+        while anchor in anchors:
+            anchor = f"{base}-{suffix}"
+            suffix += 1
+        anchors.add(anchor)
     return anchors
+
+
+def is_public_evidence_url(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return False
+
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "github.com"
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        return False
+
+    raw_segments = parsed.path.split("/")
+    if raw_segments[0] != "" or any(not segment for segment in raw_segments[1:]):
+        return False
+    if len(raw_segments) < 6:
+        return False
+
+    decoded_segments: list[str] = []
+    for raw_segment in raw_segments[1:]:
+        decoded_segment = unquote(raw_segment)
+        if (
+            decoded_segment in {"", ".", ".."}
+            or "/" in decoded_segment
+            or "\\" in decoded_segment
+        ):
+            return False
+        decoded_segments.append(decoded_segment)
+
+    raw_owner, _, raw_blob, raw_reference, *_ = raw_segments[1:]
+    _, repository, _, _, *artifact = decoded_segments
+    return (
+        raw_owner == "yanizhang-yz"
+        and repository != ""
+        and raw_blob == "blob"
+        and (
+            raw_reference == "main"
+            or COMMIT_REF.fullmatch(raw_reference) is not None
+        )
+        and bool(artifact)
+    )
+
+
+def validate_milestone_page(
+    milestone_id: str, status: str, guide_path: str, text: str
+) -> list[str]:
+    errors: list[str] = []
+    h1_match = MARKDOWN_H1.search(text)
+    h1 = h1_match.group(1) if h1_match else ""
+    if not re.search(
+        rf"(?<![A-Za-z0-9]){re.escape(milestone_id)}(?![A-Za-z0-9])", h1
+    ):
+        errors.append(
+            f"{milestone_id} guide page H1 does not identify {milestone_id}"
+        )
+
+    status_match = PAGE_STATUS.search(text)
+    if status_match is None:
+        errors.append(f"{milestone_id} guide page is missing a valid Status line")
+    elif status_match.group(1) != status:
+        errors.append(
+            f"{milestone_id} guide page status {status_match.group(1)} "
+            f"does not match milestone data status {status}"
+        )
+
+    section_matches = list(MARKDOWN_H2.finditer(text))
+    sections = {match.group(1) for match in section_matches}
+    for required_section in REQUIRED_MILESTONE_SECTIONS:
+        if required_section not in sections:
+            errors.append(
+                f"{milestone_id} guide page is missing required section: "
+                f"{required_section}"
+            )
+
+    for index, match in enumerate(section_matches):
+        if match.group(1) != "Completion Gate":
+            continue
+        content_end = (
+            section_matches[index + 1].start()
+            if index + 1 < len(section_matches)
+            else len(text)
+        )
+        if not text[match.end():content_end].strip():
+            errors.append(f"{milestone_id} guide page has a blank Completion Gate")
+        break
+
+    return errors
 
 
 def validate_internal_links(root: Path) -> list[str]:
@@ -114,9 +233,35 @@ def validate(root: Path) -> list[str]:
             errors.append(f"milestone record at index {index} must be an object")
             continue
 
-        milestone_id = str(record.get("id", ""))
-        status = str(record.get("status", ""))
-        guide_path = str(record.get("guide_path", ""))
+        if set(record) != MILESTONE_FIELDS:
+            errors.append(
+                f"milestone record at index {index} must have exactly these fields: "
+                f"{', '.join(sorted(MILESTONE_FIELDS))}"
+            )
+
+        expected_types: dict[str, type | tuple[type, ...]] = {
+            "id": str,
+            "title": str,
+            "status": str,
+            "guide_path": str,
+            "evidence_url": (str, type(None)),
+        }
+        for field, expected_type in expected_types.items():
+            if field in record and not isinstance(record[field], expected_type):
+                errors.append(
+                    f"milestone record at index {index} field {field} "
+                    "has an invalid type"
+                )
+
+        milestone_id = record.get("id") if isinstance(record.get("id"), str) else ""
+        status = (
+            record.get("status") if isinstance(record.get("status"), str) else ""
+        )
+        guide_path = (
+            record.get("guide_path")
+            if isinstance(record.get("guide_path"), str)
+            else ""
+        )
         evidence_url = record.get("evidence_url")
 
         if milestone_id in seen_ids:
@@ -137,10 +282,16 @@ def validate(root: Path) -> list[str]:
                 errors.append(
                     f"{milestone_id} guide path does not exist: {guide_path}"
                 )
-        if status == "verified" and not (
-            isinstance(evidence_url, str)
-            and PUBLIC_EVIDENCE_URL_PATTERN.fullmatch(evidence_url)
-        ):
+            elif milestone_id and status:
+                errors.extend(
+                    validate_milestone_page(
+                        milestone_id,
+                        status,
+                        guide_path,
+                        guide_destination.read_text(encoding="utf-8"),
+                    )
+                )
+        if status == "verified" and not is_public_evidence_url(evidence_url):
             errors.append(
                 f"{milestone_id} is verified without a public evidence URL"
             )
