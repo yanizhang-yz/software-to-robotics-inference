@@ -1,0 +1,34 @@
+name: Claim correction
+description: Propose an evidence-backed correction to a published claim.
+title: "correction: "
+labels:
+  - documentation
+body:
+  - type: input
+    id: affected_path
+    attributes:
+      label: Affected path
+      description: Name the repository path containing the claim.
+    validations:
+      required: true
+  - type: textarea
+    id: current_claim
+    attributes:
+      label: Current claim
+      description: Quote or link the current claim.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_correction
+    attributes:
+      label: Proposed correction
+      description: State the precise replacement or revision.
+    validations:
+      required: true
+  - type: textarea
+    id: supporting_evidence
+    attributes:
+      label: Supporting evidence
+      description: Link a source or committed artifact and state its limitation.
+    validations:
+      required: true

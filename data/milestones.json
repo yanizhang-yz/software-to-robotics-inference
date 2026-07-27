@@ -1,0 +1,9 @@
+[
+  {"id":"M0","title":"Translate your existing software skills","status":"planned","guide_path":"docs/milestones/m0-skill-translation.md","evidence_url":null},
+  {"id":"M1","title":"Execute and measure a model","status":"planned","guide_path":"docs/milestones/m1-model-inference.md","evidence_url":null},
+  {"id":"M2","title":"Learn robot data and policies with LeRobot","status":"planned","guide_path":"docs/milestones/m2-lerobot-data-policies.md","evidence_url":null},
+  {"id":"M3","title":"Optional real-arm capstone","status":"active","guide_path":"docs/milestones/m3-real-arm-capstone.md","evidence_url":null},
+  {"id":"M4","title":"Build the robotics inference loop","status":"planned","guide_path":"docs/milestones/m4-robotics-inference-loop.md","evidence_url":null},
+  {"id":"M5","title":"Serve a modern language or VLA model with SGLang","status":"planned","guide_path":"docs/milestones/m5-sglang-serving.md","evidence_url":null},
+  {"id":"M6","title":"Contribute and present the evidence","status":"planned","guide_path":"docs/milestones/m6-contribute-and-present.md","evidence_url":null}
+]
