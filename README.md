@@ -38,10 +38,10 @@ repositories. A verified milestone links to a public GitHub blob artifact.
 
 ## Current Maintainer Progress
 
-M3, the optional real-arm capstone, is active. The remaining milestones are
-planned; see the canonical status records in `data/milestones.json`.
+M0–M2 are verified, M3 is active, and M4–M6 are planned. See the
+[canonical status records](data/milestones.json) and the
+[evidence-backed build log](docs/build-log/README.md).
 
-- [Build Log Index](docs/build-log/README.md)
 - [Portfolio Map](docs/portfolio-map.md)
 
 ## Start Here
