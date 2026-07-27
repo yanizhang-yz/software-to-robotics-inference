@@ -7,6 +7,12 @@ from scripts.validate_guide import validate
 
 
 class ValidateGuideTests(unittest.TestCase):
+    def test_ci_runs_tests_and_validator(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+        self.assertIn("python3 -m unittest discover -s tests -v", workflow)
+        self.assertIn("python3 scripts/validate_guide.py", workflow)
+
     def test_repository_contract_passes(self) -> None:
         repository_root = Path(__file__).resolve().parents[1]
         self.assertEqual(validate(repository_root), [])
