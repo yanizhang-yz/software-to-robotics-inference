@@ -7,6 +7,10 @@ from scripts.validate_guide import validate
 
 
 class ValidateGuideTests(unittest.TestCase):
+    def test_repository_contract_passes(self) -> None:
+        repository_root = Path(__file__).resolve().parents[1]
+        self.assertEqual(validate(repository_root), [])
+
     def make_root(self) -> Path:
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
