@@ -21,6 +21,8 @@ milestone. SO-ARM101 is the advanced capstone for people who can safely access
 hardware. Follow LeRobot before SGLang: robot data and policies in M2 establish
 the context that later makes serving choices in M5 meaningful.
 
+- [Budget and Hardware Paths](docs/budget-paths.md)
+
 ## Milestones
 
 The ordered path is [M0](docs/milestones/m0-skill-translation.md) through
@@ -37,6 +39,9 @@ repositories. A verified milestone links to a public GitHub blob artifact.
 M3, the optional real-arm capstone, is active. The remaining milestones are
 planned; see the canonical status records in `data/milestones.json`.
 
+- [Build Log Index](docs/build-log/README.md)
+- [Portfolio Map](docs/portfolio-map.md)
+
 ## Start Here
 
 Begin with [M0](docs/milestones/m0-skill-translation.md), choose the
@@ -47,6 +52,10 @@ in milestone order.
 
 Contributions should improve runnable artifacts, measurements, documentation,
 or evidence while preserving the milestone completion gates.
+
+- [Contribution Guide](CONTRIBUTING.md)
+- [Contribution Routes](docs/contributions.md)
+- [Human and Agentic Workflow](docs/agentic-workflow.md)
 
 ## License
 

@@ -8,11 +8,17 @@ from pathlib import Path
 APPROVED_IDS = {f"M{number}" for number in range(7)}
 APPROVED_STATUSES = {"planned", "active", "blocked", "verified"}
 REQUIRED_PATHS = {
+    "CONTRIBUTING.md",
     "README.md",
     "data/milestones.json",
+    "docs/agentic-workflow.md",
+    "docs/budget-paths.md",
+    "docs/build-log/README.md",
+    "docs/contributions.md",
     "docs/skill-translation.md",
     "docs/evidence-contract.md",
     "docs/milestones/README.md",
+    "docs/portfolio-map.md",
 }
 PERSONAL_PATH_PATTERNS = (
     re.compile(r"/Users/[^/\s]+/"),

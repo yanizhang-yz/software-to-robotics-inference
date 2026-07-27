@@ -18,10 +18,16 @@ class ValidateGuideTests(unittest.TestCase):
 
     def write_minimal_guide(self, root: Path) -> None:
         required = [
+            "CONTRIBUTING.md",
             "README.md",
+            "docs/agentic-workflow.md",
+            "docs/budget-paths.md",
+            "docs/build-log/README.md",
+            "docs/contributions.md",
             "docs/skill-translation.md",
             "docs/evidence-contract.md",
             "docs/milestones/README.md",
+            "docs/portfolio-map.md",
         ]
         for relative in required:
             path = root / relative

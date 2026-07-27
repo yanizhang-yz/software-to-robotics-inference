@@ -1,0 +1,41 @@
+name: Reproduction report
+description: Report a reproducible guide, artifact, or measurement problem.
+title: "reproduction: "
+labels:
+  - reproduction
+body:
+  - type: input
+    id: milestone
+    attributes:
+      label: Milestone ID
+      description: Identify the affected milestone, such as M2 or M5.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include relevant runtime, operating system, hardware, and dependency details.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: Provide the exact command used to reproduce the result.
+    validations:
+      required: true
+  - type: textarea
+    id: observed_result
+    attributes:
+      label: Observed result
+      description: Describe what occurred and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Provide redacted logs or a link to committed evidence. Do not include secrets or personal data.
+    validations:
+      required: true
