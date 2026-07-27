@@ -157,6 +157,31 @@ class ValidateGuideTests(unittest.TestCase):
             any("personal absolute path" in error for error in validate(root))
         )
 
+    def test_ignores_personal_path_literals_in_validator_and_tests(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        validator = root / "scripts/validate_guide.py"
+        validator.parent.mkdir(parents=True, exist_ok=True)
+        validator.write_text("PATH = '/Users/example/private/file'\n", encoding="utf-8")
+        test_control = root / "tests/test_control.py"
+        test_control.parent.mkdir(parents=True, exist_ok=True)
+        test_control.write_text(
+            "PATH = '/Users/example/private/file'\n", encoding="utf-8"
+        )
+
+        self.assertEqual(validate(root), [])
+
+    def test_rejects_personal_paths_in_other_python_files(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        helper = root / "scripts/helper.py"
+        helper.parent.mkdir(parents=True, exist_ok=True)
+        helper.write_text("PATH = '/Users/example/private/file'\n", encoding="utf-8")
+
+        self.assertIn(
+            "scripts/helper.py contains a personal absolute path", validate(root)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

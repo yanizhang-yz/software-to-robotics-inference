@@ -91,12 +91,17 @@ def validate(root: Path) -> list[str]:
     for path in root.rglob("*"):
         if not path.is_file() or ".git" in path.parts:
             continue
+        relative_path = path.relative_to(root)
+        if relative_path == Path("scripts/validate_guide.py") or (
+            relative_path.parts and relative_path.parts[0] == "tests"
+        ):
+            continue
         if path.suffix.lower() not in {".md", ".json", ".py", ".yml", ".yaml"}:
             continue
         text = path.read_text(encoding="utf-8")
         if any(pattern.search(text) for pattern in PERSONAL_PATH_PATTERNS):
             errors.append(
-                f"{path.relative_to(root)} contains a personal absolute path"
+                f"{relative_path} contains a personal absolute path"
             )
 
     return errors
