@@ -42,6 +42,7 @@ M0–M2 are verified, M3 is active, and M4–M6 are planned. See the
 [canonical status records](data/milestones.json) and the
 [evidence-backed build log](docs/build-log/README.md).
 
+- [v0.1.0 Launch Note](docs/launch/v0.1.0.md)
 - [Portfolio Map](docs/portfolio-map.md)
 
 ## Start Here
