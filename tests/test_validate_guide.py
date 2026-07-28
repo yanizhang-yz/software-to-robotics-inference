@@ -142,6 +142,22 @@ class ValidateGuideTests(unittest.TestCase):
         )
         self.assertEqual(validate(root), [])
 
+    def test_rejects_relative_links_in_versioned_release_notes(self) -> None:
+        root = self.make_root()
+        self.write_minimal_guide(root)
+        launch = root / "docs/launch/v1.2.3.md"
+        launch.parent.mkdir(parents=True, exist_ok=True)
+        launch.write_text(
+            "# Release\n\n[milestone](../milestones/m0.md)\n",
+            encoding="utf-8",
+        )
+
+        self.assertIn(
+            "docs/launch/v1.2.3.md has context-dependent release link: "
+            "../milestones/m0.md",
+            validate(root),
+        )
+
     def test_accepts_duplicate_heading_anchor_suffixes(self) -> None:
         root = self.make_root()
         self.write_minimal_guide(root)
