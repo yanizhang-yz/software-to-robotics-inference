@@ -246,6 +246,24 @@ def validate_internal_links(root: Path) -> list[str]:
     return errors
 
 
+def validate_versioned_release_links(root: Path) -> list[str]:
+    errors: list[str] = []
+    launch_directory = root / "docs/launch"
+
+    for source in sorted(launch_directory.glob("v*.md")):
+        text = source.read_text(encoding="utf-8")
+        for raw_target in MARKDOWN_LINK.findall(text):
+            target = raw_target.strip().split(" ", 1)[0]
+            if target.lower().startswith(("http://", "https://", "mailto:", "//")):
+                continue
+            errors.append(
+                f"{source.relative_to(root)} has context-dependent release link: "
+                f"{target}"
+            )
+
+    return errors
+
+
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
     resolved_root = root.resolve()
@@ -374,6 +392,7 @@ def validate(root: Path) -> list[str]:
             )
 
     errors.extend(validate_internal_links(root))
+    errors.extend(validate_versioned_release_links(root))
     return errors
 
 
